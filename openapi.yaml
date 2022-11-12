@@ -1,0 +1,98 @@
+openapi: 3.0.0
+info:
+  version: 0.1.0
+  title: My awful Redis
+  license:
+    name: MIT
+servers:
+  - url: http://localhost/redis/v1
+paths:
+  /key/{key}:
+    summary: Operations with key
+    description: GET, SET, DEL
+    get:
+      summary: Get value by key
+      description: GET command in Redis
+      operationId: get
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Value for key
+          content:
+            application/json: 
+              example: "value_aaa"
+        '404':
+          description: Key not found or TTL expired
+        default:
+          description: Unexpected error
+    put:
+      summary: Set value by key
+      description: SET command in Redis
+      operationId: set
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: value
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: ttl
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Old value for key or empty string
+          content:
+            application/json: 
+              example: "value_aaa_old"
+        default:
+          description: Unexpected error
+    delete:
+      summary: Delete key
+      description: DEL command in Redis
+      operationId: del
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Old value for key or empty string
+        '404':
+          description: Key not found or TTL expired
+        default:
+          description: Unexpected error
+  /keys:
+    get:
+      summary: List keys (KEYS in Redis)
+      operationId: keys
+      parameters:
+        - name: pattern
+          in: query
+          description: Pattern for key matching
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of matched keys
+          content:
+            application/json: 
+              example: 
+                - "key_aaa"
+                - "key_bbb"
+        default:
+          description: unexpected error
