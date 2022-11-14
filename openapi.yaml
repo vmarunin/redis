@@ -5,7 +5,7 @@ info:
   license:
     name: MIT
 servers:
-  - url: http://localhost/redis/v1
+  - url: http://localhost:8080/redis/v1
 paths:
   /key/{key}:
     summary: Operations with key
