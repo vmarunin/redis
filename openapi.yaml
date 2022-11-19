@@ -22,12 +22,7 @@ paths:
             type: string
       responses:
         '200':
-          description: Value for key
-          content:
-            application/json: 
-              example: "value_aaa"
-        '404':
-          description: Key not found or TTL expired
+          $ref: "#/components/responses/Value"
         default:
           description: Unexpected error
     put:
@@ -52,10 +47,7 @@ paths:
             type: integer
       responses:
         '200':
-          description: Old value for key or empty string
-          content:
-            application/json: 
-              example: "value_aaa_old"
+          $ref: "#/components/responses/Value"
         default:
           description: Unexpected error
     delete:
@@ -70,9 +62,7 @@ paths:
             type: string
       responses:
         '200':
-          description: Old value for key or empty string
-        '404':
-          description: Key not found or TTL expired
+          $ref: "#/components/responses/Value"
         default:
           description: Unexpected error
   /keys:
@@ -88,11 +78,28 @@ paths:
             type: string
       responses:
         '200':
-          description: List of matched keys
-          content:
-            application/json: 
-              example: 
-                - "key_aaa"
-                - "key_bbb"
+          $ref: "#/components/responses/ListOfStrings"
         default:
           description: unexpected error
+
+components:
+  responses:
+    Value:
+      description: "One value response (current or old)"
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              value:
+                type: string
+              found:
+                type: boolean
+    ListOfStrings:
+      description: "List of strings"
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: string  
