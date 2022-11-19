@@ -35,16 +35,19 @@ paths:
           required: true
           schema:
             type: string
-        - name: value
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: ttl
-          in: query
-          required: false
-          schema:
-            type: integer
+      requestBody:
+        required: true
+        description: Value to store
+        content: 
+          'application/json':
+            schema:
+              type: object
+            properties:
+              value:
+                required: true
+                type: string
+              ttl:
+                type: integer
       responses:
         '200':
           $ref: "#/components/responses/Value"

@@ -1,3 +1,10 @@
+/*
+Пакет с имплементацией http.Handler RESTful сервиса AwfulRedis
+Описание API лежит в openapi.yaml
+
+Объект нужно создавать через вызов конструктора
+obj := NewAwfulRedisHandler
+*/
 package main
 
 import (
@@ -6,16 +13,18 @@ import (
 	"log"
 	"math"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 )
 
+// Интерфейс к handler, ничего не экспортируем
 type AwfulRedisHandler struct {
 	storage *AwfulRedisStorage
 	prefix  string
 }
 
+// Конструктор
+// Принимает на вход ссылку на объект хранилища
 func NewAwfulRedisHandler(storage *AwfulRedisStorage) http.Handler {
 	handler := new(AwfulRedisHandler)
 	handler.storage = storage
@@ -27,100 +36,105 @@ func NewAwfulRedisHandler(storage *AwfulRedisStorage) http.Handler {
 	return mux
 }
 
+// Обработчик пути вида /keys
 func (handler *AwfulRedisHandler) ProcessKeys(w http.ResponseWriter, r *http.Request) {
-	log.Println("ProcessKeys")
+	log.Println("ProcessKeys", r.Method, r.URL.Path)
 	if r.URL.Path != handler.prefix+"/keys" {
-		w.WriteHeader(http.StatusBadRequest)
-		handler.CORSHeaders(w)
-		io.WriteString(w, `{"error": "Bad path for keys"}`)
+		handler.responseError(http.StatusBadRequest, "Bad path for ProcessKeys", w)
 		return
 	}
 	if r.Method == "OPTIONS" {
-		handler.CORSHeaders(w)
-		w.WriteHeader(http.StatusOK)
+		handler.responseOK(nil, http.StatusOK, w)
 		return
 	}
 	if r.Method != "GET" {
-		w.WriteHeader(http.StatusBadRequest)
-		handler.CORSHeaders(w)
-		io.WriteString(w, `{"error": "Only HTTP GET allowed"}`)
+		handler.responseError(http.StatusBadRequest, "Method not allowed", w)
 		return
 	}
 	pattern := r.FormValue("pattern")
-	keys := handler.storage.Keys(pattern)
-	handler.CORSHeaders(w)
-	w.WriteHeader(http.StatusOK)
-	responseBytes, _ := json.Marshal(keys)
-	w.Write(responseBytes)
+	keys, err := handler.storage.Keys(pattern)
+	if err != nil {
+		handler.responseError(http.StatusBadRequest, "Bad pattern "+err.Error(), w)
+		return
+	}
+
+	handler.responseOK(keys, http.StatusOK, w)
 }
 
+// Обработчик пути вида /key/{id}
 func (handler *AwfulRedisHandler) ProcessKey(w http.ResponseWriter, r *http.Request) {
 	log.Println("ProcessKey", r.Method, r.URL.Path)
 	if !strings.HasPrefix(r.URL.Path, handler.prefix+"/key/") {
-		handler.CORSHeaders(w)
-		w.WriteHeader(http.StatusBadRequest)
-		io.WriteString(w, `{"error": "Bad path for keys"}`)
+		handler.responseError(http.StatusBadRequest, "Bad path for ProcessKey", w)
+		return
+	}
+	if r.Method == "OPTIONS" {
+		handler.responseOK(nil, http.StatusOK, w)
 		return
 	}
 	prefixLen := len(handler.prefix) + 5 // handler.prefix+"/key/"
 	key := r.URL.Path[prefixLen:]
 	if r.Method == "GET" {
 		value, ok := handler.storage.Get(key)
-		if ok {
-			handler.CORSHeaders(w)
-			w.WriteHeader(http.StatusOK)
-			io.WriteString(w, value)
-			return
-		} else {
-			handler.CORSHeaders(w)
-			w.WriteHeader(http.StatusNotFound)
-			io.WriteString(w, `Key not found`)
-			return
-		}
+		respData := map[string]interface{}{}
+		respData["value"] = value
+		respData["ok"] = ok
+		handler.responseOK(respData, http.StatusOK, w)
+		return
 	}
 	if r.Method == "DELETE" {
 		value, ok := handler.storage.Delete(key)
-		if !ok {
-			value = ""
-		}
-		handler.CORSHeaders(w)
-		w.WriteHeader(http.StatusOK)
-		io.WriteString(w, value)
+		respData := map[string]interface{}{}
+		respData["value"] = value
+		respData["ok"] = ok
+		handler.responseOK(respData, http.StatusOK, w)
 		return
 	}
 	if r.Method == "PUT" {
-		value := r.FormValue("value")
-		ttlStr := r.FormValue("ttl")
+		reqData := map[string]interface{}{}
+		jsonDecoder := json.NewDecoder(r.Body)
+		jsonDecoder.UseNumber()
+		err := jsonDecoder.Decode(&reqData)
+		if err != nil {
+			handler.responseError(http.StatusBadRequest, `can't parse input`+err.Error(), w)
+			return
+		}
+		value := reqData["value"].(string)
+		ttlI, ok := reqData["ttl"]
 		ttl := math.MaxInt
-		if ttlStr != "" {
-			ttlInt, err := strconv.Atoi(ttlStr)
+		if ok {
+			ttl64, err := ttlI.(json.Number).Int64()
 			if err != nil {
-				handler.CORSHeaders(w)
-				w.WriteHeader(http.StatusBadRequest)
-				io.WriteString(w, `{"error": "Cant't parse ttl"}`)
+				handler.responseError(http.StatusBadRequest, `can't parse ttl`+err.Error(), w)
 			}
-			ttl = ttlInt + int(time.Now().Unix())
+			ttl = int(ttl64) + int(time.Now().Unix())
 		}
 		old_value, ok := handler.storage.Set(key, value, ttl)
-		if !ok {
-			old_value = ""
-		}
-		handler.CORSHeaders(w)
-		w.WriteHeader(http.StatusOK)
-		io.WriteString(w, old_value)
+		respData := map[string]interface{}{}
+		respData["value"] = old_value
+		respData["ok"] = ok
+		handler.responseOK(respData, http.StatusOK, w)
 		return
 	}
-	if r.Method == "OPTIONS" {
-		handler.CORSHeaders(w)
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-	w.WriteHeader(http.StatusBadRequest)
-	io.WriteString(w, `{"error": "HTTP Method unknown"}`)
+	handler.responseError(http.StatusBadRequest, "Method not allowed", w)
 }
 
-func (handler *AwfulRedisHandler) CORSHeaders(w http.ResponseWriter) {
+func (handler *AwfulRedisHandler) responseOK(data interface{}, http_code int, w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	w.Header().Set("Access-Control-Allow-Methods", "GET,PUT,DELETE")
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http_code)
+
+	responseBytes, _ := json.Marshal(data)
+	w.Write(responseBytes)
+}
+
+func (handler *AwfulRedisHandler) responseError(http_code int, err string, w http.ResponseWriter) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	w.Header().Set("Access-Control-Allow-Methods", "GET,PUT,DELETE")
+	w.WriteHeader(http_code)
+
+	io.WriteString(w, err)
 }
