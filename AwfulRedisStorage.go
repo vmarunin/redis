@@ -102,6 +102,7 @@ func (storage *AwfulRedisStorage) Keys(pattern string) ([]string, error) {
 		} else {
 			isMatch, err := Match(pattern, k)
 			if err != nil {
+				storage.mutex.RUnlock()
 				return []string{}, err
 			}
 			if isMatch {

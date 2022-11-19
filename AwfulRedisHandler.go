@@ -13,7 +13,6 @@ import (
 	"log"
 	"math"
 	"net/http"
-	"strings"
 	"time"
 )
 
@@ -39,10 +38,10 @@ func NewAwfulRedisHandler(storage *AwfulRedisStorage) http.Handler {
 // Обработчик пути вида /keys
 func (handler *AwfulRedisHandler) ProcessKeys(w http.ResponseWriter, r *http.Request) {
 	log.Println("ProcessKeys", r.Method, r.URL.Path)
-	if r.URL.Path != handler.prefix+"/keys" {
-		handler.responseError(http.StatusBadRequest, "Bad path for ProcessKeys", w)
-		return
-	}
+	// if r.URL.Path != handler.prefix+"/keys" {
+	// 	handler.responseError(http.StatusBadRequest, "Bad path for ProcessKeys", w)
+	// 	return
+	// }
 	if r.Method == "OPTIONS" {
 		handler.responseOK(nil, http.StatusOK, w)
 		return
@@ -54,7 +53,7 @@ func (handler *AwfulRedisHandler) ProcessKeys(w http.ResponseWriter, r *http.Req
 	pattern := r.FormValue("pattern")
 	keys, err := handler.storage.Keys(pattern)
 	if err != nil {
-		handler.responseError(http.StatusBadRequest, "Bad pattern "+err.Error(), w)
+		handler.responseError(http.StatusBadRequest, err.Error(), w)
 		return
 	}
 
@@ -64,10 +63,10 @@ func (handler *AwfulRedisHandler) ProcessKeys(w http.ResponseWriter, r *http.Req
 // Обработчик пути вида /key/{id}
 func (handler *AwfulRedisHandler) ProcessKey(w http.ResponseWriter, r *http.Request) {
 	log.Println("ProcessKey", r.Method, r.URL.Path)
-	if !strings.HasPrefix(r.URL.Path, handler.prefix+"/key/") {
-		handler.responseError(http.StatusBadRequest, "Bad path for ProcessKey", w)
-		return
-	}
+	// if !strings.HasPrefix(r.URL.Path, handler.prefix+"/key/") {
+	// 	handler.responseError(http.StatusBadRequest, "Bad path for ProcessKey", w)
+	// 	return
+	// }
 	if r.Method == "OPTIONS" {
 		handler.responseOK(nil, http.StatusOK, w)
 		return
@@ -83,7 +82,9 @@ func (handler *AwfulRedisHandler) ProcessKey(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	if r.Method == "DELETE" {
+		log.Println("Before")
 		value, ok := handler.storage.Delete(key)
+		log.Println("After")
 		respData := map[string]interface{}{}
 		respData["value"] = value
 		respData["ok"] = ok
@@ -106,6 +107,7 @@ func (handler *AwfulRedisHandler) ProcessKey(w http.ResponseWriter, r *http.Requ
 			ttl64, err := ttlI.(json.Number).Int64()
 			if err != nil {
 				handler.responseError(http.StatusBadRequest, `can't parse ttl`+err.Error(), w)
+				return
 			}
 			ttl = int(ttl64) + int(time.Now().Unix())
 		}
@@ -120,6 +122,7 @@ func (handler *AwfulRedisHandler) ProcessKey(w http.ResponseWriter, r *http.Requ
 }
 
 func (handler *AwfulRedisHandler) responseOK(data interface{}, http_code int, w http.ResponseWriter) {
+	log.Println("responseOK", http_code, data)
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	w.Header().Set("Access-Control-Allow-Methods", "GET,PUT,DELETE")
