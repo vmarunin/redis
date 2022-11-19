@@ -15,6 +15,6 @@ func main() {
 
 	handler := NewAwfulRedisHandler(storage)
 
-	log.Println("starting server at :8082")
-	http.ListenAndServe(":8082", handler)
+	log.Println("starting server at :8080")
+	http.ListenAndServe(":8080", handler)
 }
