@@ -11,3 +11,10 @@
 * REST клиент/сервер, через Swagger пишу openapi.yaml
 * Внутреннее хранилище: map\[key\]value + map[key]ttl, защищённые RWMutex
 * По истечении TTL не делаем ничего, реально удаляем только при обращении к ключу
+
+### Запуск
+`docker-compose up -d`
+По умолчанию запускается на localhost:8080
+
+### Клиент 
+Генерируем по openapi.yaml тут https://editor-next.swagger.io/

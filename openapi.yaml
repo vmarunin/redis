@@ -42,12 +42,11 @@ paths:
           'application/json':
             schema:
               type: object
-            properties:
-              value:
-                required: true
-                type: string
-              ttl:
-                type: integer
+              properties:
+                value:
+                  type: string
+                ttl:
+                  type: integer
       responses:
         '200':
           $ref: "#/components/responses/Value"
