@@ -1,14 +1,14 @@
-FROM golang:1.10 AS build
+FROM golang:1.19 AS build
 WORKDIR /go/src
-COPY go ./go
-COPY main.go .
+COPY . ./
 
 ENV CGO_ENABLED=0
 RUN go get -d -v ./...
 
-RUN go build -a -installsuffix cgo -o swagger .
+RUN go build -a .
+RUN go test
 
 FROM scratch AS runtime
-COPY --from=build /go/src/swagger ./
+COPY --from=build /go/src/ ./
 EXPOSE 8080/tcp
-ENTRYPOINT ["./swagger"]
+ENTRYPOINT ["./redis"]
