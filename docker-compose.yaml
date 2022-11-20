@@ -1,0 +1,9 @@
+version: '3.5'
+services:
+  awful_redis:
+    ports:
+      - "8080:8080"
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: awful_redis
